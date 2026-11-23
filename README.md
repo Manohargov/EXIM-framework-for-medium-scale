@@ -465,6 +465,15 @@ deployment agent and architecture diagrams is at:
 
 `docs/user-guide/MSM_User_Guide.pdf` (rebuild with `docs/user-guide/build_guide.py`).
 
+## Developer document
+
+A source-grounded 16-page developer document with architecture diagrams, Pydantic
+data schemas, storage model, UI/UX design tokens, AI/ML integration, runtime flows,
+API/CLI, deployment and security/operations is at:
+
+`docs/developer-doc/MSM_Developer_Document.pdf` (rebuild with
+`docs/developer-doc/build_developer_doc.py`).
+
 ## Architecture diagrams
 
 Editable draw.io sources and rendered PNGs live in `docs/architecture/`:
