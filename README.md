@@ -8,8 +8,14 @@
 
 [![Python](https://img.shields.io/badge/python-3.14-3776ab.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/streamlit-1.67-ff4b4b.svg)](https://streamlit.io/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-optional-009688.svg)](#cli-and-http-api)
 [![Tests](https://img.shields.io/badge/tests-293%20passed-2ea44f.svg)](#testing)
+[![Lint](https://img.shields.io/badge/ruff-clean-2ea44f.svg)](#testing)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
+[![Docs](https://img.shields.io/badge/docs-3%20PDFs-orange.svg)](#documentation)
+[![Release](https://img.shields.io/github/last-commit/Manohargov/EXIM-framework-for-medium-scale/master-blue.svg)](https://github.com/Manohargov/EXIM-framework-for-medium-scale)
+
+[Quick start](#quick-start) · [Architecture](#architecture) · [Documentation](#documentation) · [Repository](https://github.com/Manohargov/EXIM-framework-for-medium-scale)
 
 </div>
 
@@ -20,6 +26,11 @@
 - [Quick start](#quick-start)
 - [Application tour](#application-tour)
 - [Architecture](#architecture)
+  - [System diagram (draw.io)](#system-diagram-drawio)
+  - [Layered view](#layered-view)
+  - [Event lifecycle](#event-lifecycle)
+  - [Design rules](#design-rules)
+  - [Diagram sources](#diagram-sources)
 - [Repository layout](#repository-layout)
 - [Data and storage model](#data-and-storage-model)
 - [AI / ML integration](#ai--ml-integration)
@@ -49,11 +60,14 @@ Everything is coordinated through a typed in-process event bus. Agents never cal
 each other directly; side effects pass through an approval gate. The console, CLI and
 optional FastAPI service all share the same `EcomopsSystem` composition root.
 
-- **No external database required** — the event bus and an optional JSONL journal are the source of truth.
-- **Offline by default** — deterministic rules handle every LLM task; AI is opt-in.
-- **Multi-role** — MD, Supervisor, Staff and Accountant see different workspaces and actions.
-- **Runnable anywhere** — local Streamlit server, Docker container, or FastAPI service.
-- **Extensible** — add an event, a rule, an agent, or a theme without touching the domain core.
+| Guarantee | How it is achieved |
+|---|---|
+| **No external database** | The event bus plus an optional JSONL journal are the source of truth |
+| **Offline by default** | Deterministic rules cover every LLM task; AI is opt-in and degrades safely |
+| **Multi-role** | MD, Supervisor, Staff and Accountant see different workspaces and actions |
+| **Human control** | Every side effect starts as `ActionProposed` and waits for approval |
+| **Runnable anywhere** | Local Streamlit server, Docker container, or FastAPI service |
+| **Extensible** | Add an event, rule, agent, channel or theme without touching the domain core |
 
 ---
 
@@ -142,18 +156,87 @@ A full walkthrough with screenshots is in [`docs/user-guide/MSM_User_Guide.pdf`]
 
 ## Architecture
 
-![Complete architecture](docs/architecture/msm-architecture.png)
+### System diagram (draw.io)
+
+![Complete architecture — editable draw.io source in docs/architecture](docs/architecture/msm-architecture.png)
+
+*Full system architecture — entry points, coordination core, domain agents, storage and
+the release pipeline to GitHub. The diagram above is exported from the editable
+draw.io file described in [Diagram sources](#diagram-sources).*
+
+### Layered view
 
 ```text
-UI (Streamlit) ─┐
-CLI ────────────┼──> EcomopsSystem ──> EventBus ──> 5 Agents
-API (FastAPI) ──┘        │                │             │
-                         ├─ ApprovalGate   ├─ Journal    ├─ Inventory
-                         ├─ LLM/Rules      └─ Metrics    ├─ Finance
-                         └─ Embedder                     └─ Documents/Renderers
+┌─────────────────────────────────────────────────────────────────────────┐
+│  ENTRY POINTS                                                          │
+│  Streamlit console (app.py) · CLI (cli.py) · FastAPI (api.py)          │
+│  Deploy Deep Agent (deploy_agent/, LangChain Deep Agents)               │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  COMPOSITION ROOT — EcomopsSystem                                      │
+│  wires bus · approval gate · LLM/rules · embedder · inventory · agents │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  COORDINATION CORE                                                     │
+│  EventBus (typed events, correlation/causation)                        │
+│  ApprovalGate (ActionProposed → Approved/Rejected)                     │
+│  EventJournal (JSONL audit) · Metrics (Prometheus text)                │
+└──────┬────────────────┬────────────────┬────────────────┬──────────────┘
+       ▼                ▼                ▼                ▼
+┌────────────┐  ┌────────────────┐  ┌───────────┐  ┌──────────────────┐
+│  AGENTS    │  │  INTELLIGENCE  │  │  STATE    │  │  OUTPUT          │
+│  customer  │  │  8 rules +     │  │  Inventory│  │  documents/      │
+│  clearance │  │  optional MLX  │  │  Finance  │  │  advert posters  │
+│  transit   │  │  chat model    │  │  tasks    │  │  promotion       │
+│  returns   │  │  connector     │  │  (folds)  │  │  channels        │
+│  tasks     │  │  embedder      │  │           │  │                  │
+└────────────┘  └────────────────┘  └───────────┘  └──────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  RELEASE PIPELINE                                                      │
+│  docs/ (PDFs, screenshots) + local git repo → git push → GitHub        │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-Key design rules:
+Four planes share one core:
+
+| Plane | Role |
+|---|---|
+| **Presentation** | Streamlit console, CLI, FastAPI — all call the same `EcomopsSystem` |
+| **Coordination** | Event bus, approval gate, journal, metrics — the single source of truth |
+| **Domain** | Agents, rules/LLM, inventory, finance, task folds — pure and testable |
+| **Output** | Documents, posters, notices, promotion channels, exported reports |
+
+### Event lifecycle
+
+A typical order for a risky side effect:
+
+```text
+UI / CLI / API
+    │  submit request
+    ▼
+ActionProposed ──► ApprovalRequested ──► Approvals workspace
+                                            │
+                        ┌───────────────────┴───────────────────┐
+                        ▼                                       ▼
+                 ActionApproved                            ActionRejected
+                        │                                       │
+                        ▼                                       ▼
+                    act() ──► domain events ──► bus ──► read models
+                                                          │
+                                          ┌───────────────┼───────────────┐
+                                          ▼               ▼               ▼
+                                     KPI rail        Event trace      Finance ledger
+```
+
+Every event carries `correlation_id` and `causation_id`, so the Event trace workspace
+can reconstruct the full chain — request → proposal → approval → effect — without a
+relational database.
+
+### Design rules
 
 1. **Typed events only** — `Event` subclasses carry domain facts with shared envelope metadata.
 2. **Bus as store** — history is the source of truth; `bus.drain()` runs subscribers deterministically.
@@ -162,8 +245,31 @@ Key design rules:
 5. **Theme skin only** — `theme.py` swaps CSS variables; domain logic and posters keep their own colours.
 6. **Pure read models** — metrics, finance and task state are folded from events, never mutated in place.
 
-The diagram also includes the local git repository, GitHub release target, documentation
-set and deployment agent. Editable sources: [`docs/architecture/*.drawio`](docs/architecture/).
+### Diagram sources
+
+All diagrams are authored in [draw.io / diagrams.net](https://app.diagrams.net/) and
+committed as editable `.drawio` files next to their PNG exports:
+
+| Diagram | Source | Export |
+|---|---|---|
+| Full system architecture | [`msm-architecture.drawio`](docs/architecture/msm-architecture.drawio) | [`msm-architecture.png`](docs/architecture/msm-architecture.png) |
+| Chat model connector | [`msm-chat-connector.drawio`](docs/architecture/msm-chat-connector.drawio) | [`msm-chat-connector.png`](docs/architecture/msm-chat-connector.png) |
+| Functional / structural views | [`ecomops-architecture.drawio`](docs/architecture/ecomops-architecture.drawio) | [`ecomops-architecture.pdf`](docs/architecture/ecomops-architecture.pdf) |
+
+`msm-architecture-graph.json` is the deterministic graph source (nodes + edges) used to
+regenerate the main diagram:
+
+```bash
+cd docs/architecture
+# lay out nodes/edges into an editable .drawio (drawio-skill autolayout script)
+python3 autolayout.py msm-architecture-graph.json -o msm-architecture.drawio
+# export a 2x PNG for the README and PDFs
+drawio -x -f png -e -s 2 -o msm-architecture.png msm-architecture.drawio
+```
+
+Open any `.drawio` file in draw.io desktop or <https://app.diagrams.net/> to edit;
+the PNG above and the figures inside the PDFs are re-exported from these sources.
+
 Developer details: [`docs/developer-doc/MSM_Developer_Document.pdf`](docs/developer-doc/MSM_Developer_Document.pdf).
 
 ---
@@ -193,10 +299,11 @@ msm/
 │   └── api.py / cli.py     HTTP control plane and CLI
 ├── deploy_agent/           LangChain Deep Agents deployment automation
 ├── data/                   Grocery catalogue and image cache
-├── docs/                   Architecture diagrams, user guide, developer doc
+├── docs/                   draw.io diagrams, user guide, developer doc, write-up
 ├── tests/                  293 offline, deterministic tests
 ├── Dockerfile / docker-compose.yml / .dockerignore
 ├── AGENTS.md               Agent operating rules for this repo
+├── LICENSE                 MIT
 ├── PROJECT_WRITEUP.md      Executive project write-up
 └── README.md               This document
 ```
@@ -243,7 +350,7 @@ write_advert_copy       write_transit_copy
 
 ### Chat connector
 
-![Chat connector](docs/architecture/msm-chat-connector.png)
+![Chat connector — editable draw.io source in docs/architecture](docs/architecture/msm-chat-connector.png)
 
 `src/ecomops/chatmodel.py` supports three modes:
 
@@ -287,6 +394,9 @@ can enable **All assignees**.
 Each theme exposes surface, text, accent and glass tokens as CSS variables injected after
 the base stylesheet. Soft and Crisp contrast levels are available in the picker. Switching
 themes never rebuilds widgets; posters and domain output keep their own branded palettes.
+
+![Glass theme](docs/user-guide/screenshots/03-theme-glass.jpeg)
+![Flat theme](docs/user-guide/screenshots/04-theme-flat.jpeg)
 
 ---
 
@@ -375,7 +485,7 @@ No tool pushes to a remote. See [`deploy_agent/README.md`](deploy_agent/README.m
 | [Project write-up](PROJECT_WRITEUP.md) / [PDF](docs/writeup/MSM_Project_Writeup.pdf) | Executive summary, problem, solution, decisions, verification and future work |
 | [User guide](docs/user-guide/MSM_User_Guide.pdf) | 21 pages, all features, workflows and screenshots |
 | [Developer document](docs/developer-doc/MSM_Developer_Document.pdf) | 16 pages: architecture, schemas, storage, UI/UX, AI, flows, security |
-| [Architecture diagrams](docs/architecture/) | Editable `.drawio` sources and PNG exports |
+| [Architecture diagrams](docs/architecture/) | Editable `.drawio` sources and PNG/PDF exports |
 | [Document intake plan](docs/document-intake-plan.md) | Intake pipeline design and limits |
 | [This README](README.md) | Setup and navigation |
 
@@ -448,7 +558,9 @@ No tool pushes to a remote. See [`deploy_agent/README.md`](deploy_agent/README.m
 2. Keep changes small; add a test for new behaviour.
 3. Run `ruff` and `pytest` before committing.
 4. Add or update docs under `docs/` and regenerate PDFs with the build scripts.
-5. Never commit secrets; `.env` is ignored.
+5. If architecture changes, update `msm-architecture-graph.json`, regenerate the
+   `.drawio` and PNG, and re-export the PDFs.
+6. Never commit secrets; `.env` is ignored.
 
 See [`AGENTS.md`](AGENTS.md) for the deployment agent operating rules.
 
