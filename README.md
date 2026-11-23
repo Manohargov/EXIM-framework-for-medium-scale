@@ -13,7 +13,7 @@
 [![Lint](https://img.shields.io/badge/ruff-clean-2ea44f.svg)](#testing)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
 [![Docs](https://img.shields.io/badge/docs-3%20PDFs-orange.svg)](#documentation)
-[![Release](https://img.shields.io/github/last-commit/Manohargov/EXIM-framework-for-medium-scale/master-blue.svg)](https://github.com/Manohargov/EXIM-framework-for-medium-scale)
+[![Release](https://img.shields.io/github/last-commit/Manohargov/EXIM-framework-for-medium-scale?color=blue)](https://github.com/Manohargov/EXIM-framework-for-medium-scale)
 
 [Quick start](#quick-start) · [Architecture](#architecture) · [Documentation](#documentation) · [Repository](https://github.com/Manohargov/EXIM-framework-for-medium-scale)
 
