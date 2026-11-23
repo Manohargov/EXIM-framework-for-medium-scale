@@ -1,0 +1,16 @@
+services:
+  msm:
+    build: .
+    image: msm-console:local
+    container_name: msm-console
+    ports:
+      - "8501:8501"
+    environment:
+      ECOMOPS_SSO_MODE: ${ECOMOPS_SSO_MODE:-dev}
+      ECOMOPS_DEMO_PASSWORD: ${ECOMOPS_DEMO_PASSWORD:-msm}
+      ECOMOPS_SESSION_SECRET: ${ECOMOPS_SESSION_SECRET:-msm-dev-secret-change-me}
+      ECOMOPS_WEB_IMAGES: ${ECOMOPS_WEB_IMAGES:-on}
+      ECOMOPS_CHAT_DISABLE_LLM: ${ECOMOPS_CHAT_DISABLE_LLM:-0}
+    volumes:
+      - ./data/image_cache:/app/data/image_cache
+    restart: unless-stopped

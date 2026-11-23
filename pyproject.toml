@@ -1,0 +1,54 @@
+[project]
+name = "ecomops"
+version = "0.4.0"
+description = "Event-driven multi-agent system for e-commerce operations: customer requirements, stock clearance, transit management"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.7",
+    "typer>=0.12",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+mlx = ["mlx-lm>=0.22"]
+ui = ["streamlit>=1.40", "pillow>=10"]
+embeddings = ["sentence-transformers>=3.0"]
+api = ["fastapi>=0.115", "uvicorn>=0.30"]
+# Document intake: poppler CLI (pdftotext/pdftoppm) + Pillow; tesseract optional for scans.
+docs = ["pillow>=10"]
+# Optional natural-language assistant (OpenAI-compatible endpoint, e.g. Lemonade).
+chat = ["langchain-core>=0.3", "langchain-openai>=0.2"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "httpx2>=2.0",
+]
+
+[project.scripts]
+ecomops = "ecomops.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ecomops"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501", "B008", "SIM108", "RUF012"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true

@@ -1,0 +1,127 @@
+<mxfile>
+  <diagram id="autolayout" name="Page-1">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="group_0" value="config" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#82b366;fontColor=#82b366;verticalAlign=top;fontStyle=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="6" y="96" width="788" height="128" as="geometry"/>
+        </mxCell>
+        <mxCell id="group_1" value="connector" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#d79b00;fontColor=#d79b00;verticalAlign=top;fontStyle=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="796" y="96" width="298" height="123" as="geometry"/>
+        </mxCell>
+        <mxCell id="group_2" value="modes" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9673a6;fontColor=#9673a6;verticalAlign=top;fontStyle=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1106" y="6" width="258" height="283" as="geometry"/>
+        </mxCell>
+        <mxCell id="group_3" value="outcome" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#b85450;fontColor=#b85450;verticalAlign=top;fontStyle=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1876" y="96" width="488" height="108" as="geometry"/>
+        </mxCell>
+        <mxCell id="group_4" value="runtime" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#d6b656;fontColor=#d6b656;verticalAlign=top;fontStyle=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1376" y="16" width="488" height="188" as="geometry"/>
+        </mxCell>
+        <mxCell id="group_5" value="ui" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#6c8ebf;fontColor=#6c8ebf;verticalAlign=top;fontStyle=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="276" y="236" width="808" height="123" as="geometry"/>
+        </mxCell>
+        <mxCell id="chat_ui" value="Sidebar Assistant&lt;br&gt;chat_input + document attach" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="group_5">
+          <mxGeometry x="24" y="24" width="210" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="ops_chat" value="OpsChat.answer()&lt;br&gt;1. deterministic intents + role matrix&lt;br&gt;2. local model via connector" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="group_5">
+          <mxGeometry x="264" y="24" width="230" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="snapshot" value="Compact JSON snapshot&lt;br&gt;role, permissions, events, finance (gated), document" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="group_5">
+          <mxGeometry x="554" y="24" width="230" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="cfg_ui" value="Configuration → Chat model&lt;br&gt;off | endpoint | gguf&lt;br&gt;path · port · context · API key" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="group_0">
+          <mxGeometry x="24" y="24" width="230" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="config" value="ChatModelConfig&lt;br&gt;from_environment() / session state" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="group_0">
+          <mxGeometry x="294" y="34" width="210" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="singleton" value="get_connector()&lt;br&gt;shared instance · rebuild on config change" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="group_0">
+          <mxGeometry x="544" y="34" width="220" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="connector" value="ChatConnector.invoke()&lt;br&gt;ensure_ready() → resolve model → ChatOpenAI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;" vertex="1" parent="group_1">
+          <mxGeometry x="24" y="24" width="250" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="off" value="mode=off&lt;br&gt;no model call" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="group_2">
+          <mxGeometry x="54" y="204" width="160" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="endpoint" value="mode=endpoint&lt;br&gt;base_url + model id&lt;br&gt;auto-discover from /models" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="group_2">
+          <mxGeometry x="34" y="124" width="200" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="gguf" value="mode=gguf&lt;br&gt;gguf_path + port + ctx + ngl&lt;br&gt;start/stop llama-server" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="group_2">
+          <mxGeometry x="24" y="24" width="210" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="langchain" value="LangChain ChatOpenAI&lt;br&gt;OpenAI-compatible protocol" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="group_4">
+          <mxGeometry x="24" y="64" width="210" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="lemonade" value="Lemonade / Ollama / vLLM&lt;br&gt;running endpoint" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="group_4">
+          <mxGeometry x="264" y="104" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="llama" value="llama-server&lt;br&gt;.gguf file · alias msm-chat&lt;br&gt;Popen / terminate" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="group_4">
+          <mxGeometry x="264" y="24" width="200" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ground" value="Grounding guard&lt;br&gt;reject numbers not in snapshot" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="group_3">
+          <mxGeometry x="24" y="24" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="answer" value="Answer in sidebar&lt;br&gt;or deterministic fallback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="group_3">
+          <mxGeometry x="264" y="24" width="200" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="e0" value="question" style="html=1;rounded=0;" edge="1" parent="1" source="chat_ui" target="ops_chat">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="510" y="290"/><mxPoint x="530" y="290"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e1" value="session state" style="html=1;rounded=0;" edge="1" parent="1" source="cfg_ui" target="config">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="260" y="160"/><mxPoint x="290" y="160"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e2" value="" style="html=1;rounded=0;" edge="1" parent="1" source="config" target="singleton">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="510" y="160"/><mxPoint x="540" y="160"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e3" value="" style="html=1;rounded=0;" edge="1" parent="1" source="singleton" target="connector">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="770" y="160"/><mxPoint x="810" y="160"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e4" value="build" style="html=1;rounded=0;" edge="1" parent="1" source="ops_chat" target="snapshot">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="770" y="310"/><mxPoint x="820" y="310"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e5" value="invoke" style="html=1;rounded=0;" edge="1" parent="1" source="ops_chat" target="connector">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="810" y="280"/><mxPoint x="830" y="280"/><mxPoint x="830" y="280"/><mxPoint x="830" y="280"/><mxPoint x="830" y="210"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e6" value="" style="html=1;rounded=0;" edge="1" parent="1" source="connector" target="off">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1070" y="220"/><mxPoint x="1070" y="240"/><mxPoint x="1070" y="240"/><mxPoint x="1070" y="240"/><mxPoint x="1140" y="240"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e7" value="" style="html=1;rounded=0;" edge="1" parent="1" source="connector" target="endpoint">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1080" y="160"/><mxPoint x="1120" y="160"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e8" value="" style="html=1;rounded=0;" edge="1" parent="1" source="connector" target="gguf">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="950" y="100"/><mxPoint x="950" y="70"/><mxPoint x="950" y="70"/><mxPoint x="950" y="70"/><mxPoint x="1120" y="70"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e9" value="" style="html=1;rounded=0;" edge="1" parent="1" source="endpoint" target="langchain">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1340" y="130"/><mxPoint x="1390" y="130"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e10" value="" style="html=1;rounded=0;" edge="1" parent="1" source="gguf" target="langchain">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1340" y="90"/><mxPoint x="1390" y="90"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e11" value="" style="html=1;rounded=0;" edge="1" parent="1" source="langchain" target="lemonade">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1610" y="130"/><mxPoint x="1630" y="130"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e12" value="" style="html=1;rounded=0;" edge="1" parent="1" source="langchain" target="llama">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1610" y="90"/><mxPoint x="1630" y="90"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e13" value="text" style="html=1;rounded=0;" edge="1" parent="1" source="lemonade" target="ground">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1840" y="150"/><mxPoint x="1890" y="150"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e14" value="text" style="html=1;rounded=0;" edge="1" parent="1" source="llama" target="ground">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1920" y="70"/><mxPoint x="2000" y="70"/><mxPoint x="2000" y="70"/><mxPoint x="2000" y="70"/><mxPoint x="2000" y="110"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e15" value="rules" style="html=1;rounded=0;" edge="1" parent="1" source="off" target="answer">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1550" y="240"/><mxPoint x="2240" y="240"/><mxPoint x="2240" y="240"/><mxPoint x="2240" y="240"/><mxPoint x="2240" y="190"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e16" value="validated text" style="html=1;rounded=0;" edge="1" parent="1" source="ground" target="answer">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="2100" y="140"/><mxPoint x="2120" y="140"/></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="e17" value="invented numbers → rules" style="html=1;rounded=0;" edge="1" parent="1" source="ground" target="answer">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="2100" y="140"/><mxPoint x="2120" y="140"/></Array></mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

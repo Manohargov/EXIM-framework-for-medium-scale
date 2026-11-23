@@ -1,0 +1,40 @@
+{
+  "direction": "LR",
+  "nodes": [
+    {"id":"chat_ui","label":"Sidebar Assistant<br>chat_input + document attach","group":"ui","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;","width":210,"height":65},
+    {"id":"ops_chat","label":"OpsChat.answer()<br>1. deterministic intents + role matrix<br>2. local model via connector","group":"ui","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;","width":230,"height":75},
+    {"id":"snapshot","label":"Compact JSON snapshot<br>role, permissions, events, finance (gated), document","group":"ui","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;","width":230,"height":70},
+    {"id":"cfg_ui","label":"Configuration → Chat model<br>off | endpoint | gguf<br>path · port · context · API key","group":"config","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;","width":230,"height":80},
+    {"id":"config","label":"ChatModelConfig<br>from_environment() / session state","group":"config","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;","width":210,"height":60},
+    {"id":"singleton","label":"get_connector()<br>shared instance · rebuild on config change","group":"config","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;","width":220,"height":65},
+    {"id":"connector","label":"ChatConnector.invoke()<br>ensure_ready() → resolve model → ChatOpenAI","group":"connector","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1;","width":250,"height":75},
+    {"id":"off","label":"mode=off<br>no model call","group":"modes","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;","width":160,"height":55},
+    {"id":"endpoint","label":"mode=endpoint<br>base_url + model id<br>auto-discover from /models","group":"modes","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;","width":200,"height":70},
+    {"id":"gguf","label":"mode=gguf<br>gguf_path + port + ctx + ngl<br>start/stop llama-server","group":"modes","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;","width":210,"height":75},
+    {"id":"langchain","label":"LangChain ChatOpenAI<br>OpenAI-compatible protocol","group":"runtime","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;","width":210,"height":60},
+    {"id":"lemonade","label":"Lemonade / Ollama / vLLM<br>running endpoint","group":"runtime","style":"rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;","width":200,"height":60},
+    {"id":"llama","label":"llama-server<br>.gguf file · alias msm-chat<br>Popen / terminate","group":"runtime","style":"rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;","width":200,"height":70},
+    {"id":"ground","label":"Grounding guard<br>reject numbers not in snapshot","group":"outcome","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;","width":200,"height":60},
+    {"id":"answer","label":"Answer in sidebar<br>or deterministic fallback","group":"outcome","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;","width":200,"height":60}
+  ],
+  "edges": [
+    {"source":"chat_ui","target":"ops_chat","label":"question"},
+    {"source":"cfg_ui","target":"config","label":"session state"},
+    {"source":"config","target":"singleton"},
+    {"source":"singleton","target":"connector"},
+    {"source":"ops_chat","target":"snapshot","label":"build"},
+    {"source":"ops_chat","target":"connector","label":"invoke"},
+    {"source":"connector","target":"off"},
+    {"source":"connector","target":"endpoint"},
+    {"source":"connector","target":"gguf"},
+    {"source":"endpoint","target":"langchain"},
+    {"source":"gguf","target":"langchain"},
+    {"source":"langchain","target":"lemonade"},
+    {"source":"langchain","target":"llama"},
+    {"source":"lemonade","target":"ground","label":"text"},
+    {"source":"llama","target":"ground","label":"text"},
+    {"source":"off","target":"answer","label":"rules"},
+    {"source":"ground","target":"answer","label":"validated text"},
+    {"source":"ground","target":"answer","label":"invented numbers → rules"}
+  ]
+}
