@@ -438,6 +438,25 @@ fee, damaged-goods handling) as a second policy surface; the journal and
 `/metrics` endpoint are the audit and observability seams to connect to existing
 controls. No quantified throughput, revenue or deployment scale is claimed here.
 
+## Deployment Deep Agent + local repo
+
+`deploy_agent/` is a LangChain **Deep Agents** automation agent backed by a local
+OpenAI-compatible GGUF runtime (llama-server). It inspects the repo, runs tests,
+checks health, and can generate deployment files, commit locally, and manage the
+local Docker lifecycle — mutating tools require the phrase `DEPLOY-MSM` in the
+request, and no tool pushes to a remote.
+
+```bash
+export ECOMOPS_DEEPAGENTS_BASE_URL=http://127.0.0.1:38285/v1
+export ECOMOPS_DEEPAGENTS_MODEL=MiMo-V2.6-Distill-Qwen-9B-Q8_0
+export ECOMOPS_DEEPAGENTS_API_KEY=<local-llama-server-key>
+.venv/bin/python -m deploy_agent.cli "check repo status and run the tests"
+```
+
+The repo was initialised locally with one commit (`git log --oneline`), and
+`Dockerfile`, `docker-compose.yml` and `.dockerignore` provide the local Docker
+deployment target. See `deploy_agent/README.md` for the full tool/safety table.
+
 ## Architecture diagrams
 
 Editable draw.io sources and rendered PNGs live in `docs/architecture/`:

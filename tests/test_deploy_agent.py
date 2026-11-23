@@ -42,7 +42,7 @@ def test_show_config_does_not_leak_the_api_key(monkeypatch):
 def test_repo_status_reports_the_local_repo():
     result = _call(tools.repo_status)
     assert result["ok"]
-    assert "msm" in result["stdout"] or result["stdout"].strip() == ""
+    assert "##" in result["stdout"]  # git branch line
 
 
 def test_health_check_handles_unreachable_server(monkeypatch):

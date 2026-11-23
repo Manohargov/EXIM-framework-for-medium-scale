@@ -51,4 +51,4 @@ def model():
     )
 
 
-__all__ = ["REPO_ROOT", "DEFAULT_BASE_URL", "DEFAULT_MODEL", "api_key", "model"]
+__all__ = ["DEFAULT_BASE_URL", "DEFAULT_MODEL", "REPO_ROOT", "api_key", "model"]

@@ -192,4 +192,4 @@ TOOLS = [
     docker_down,
 ]
 
-__all__ = ["CONFIRMATION", "TOOLS", *[t.__name__ for t in TOOLS]]
+__all__ = ["CONFIRMATION", "TOOLS", *[t.name for t in TOOLS]]
