@@ -1,529 +1,457 @@
-# ecomops — MSM operations console for an event-driven multi-agent system
+# EXIM Framework — MSM Operations Console
 
-Four specialised LLM-driven agents handle **customer requirements**, **stock
-clearance**, **transit management** and **returns & refunds**. They are
-connected by an event bus and an approval gate rather than sharing one
-conversation, so each agent keeps a single operational focus while the system
-coordinates sales, inventory and logistics without a human relaying every
-message by hand.
+<div align="center">
 
-```
-                 ┌──────────────────────────────────────────────────────────┐
- Customer ──────►│  Customer Requirements Agent                             │
- request         │    capture intent · match catalogue · emit demand        │
-                 └───────┬───────────────────────────────┬──────────────────┘
-                         │ DemandSignal                  │ return/complaint intent
-                         ▼                               ▼
-       ┌──────────────────────────────┐   ┌──────────────────────────────────┐
- WMS ─►│  Stock Clearance Agent       │   │  Returns & Refunds Agent         │
-       │  discount · reserve          │   │  assess · refund · replacement   │
-       └──────────────┬───────────────┘   └──────────────┬───────────────────┘
-                      │ StockReserved                    │ RefundIssued /
-                      ▼                                  │ ReplacementAuthorised
-       ┌──────────────────────────────┐                  │
-Carrier►│  Transit Management Agent    │                  │
-       │  route · resolve exceptions  │                  │
-       └──────────────┬───────────────┘                  │
-                      └──────────────┬───────────────────┘
-                                     ▼
-                    every side-effecting action passes through the
-                    ┌────────────────────────────────────────────┐
-                    │  Approval Gate  (policy + human-in-loop)   │
-                    │  discount ≤ 20% · qty ≤ 10 · value ≤ $200  │
-                    │  refunds always need a human               │
-                    └────────────────────────────────────────────┘
-```
+![MSM Console](docs/user-guide/screenshots/02-overview.jpeg)
+
+**Event-driven commerce operations, executed with precision.**
+
+[![Python](https://img.shields.io/badge/python-3.14-3776ab.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/streamlit-1.67-ff4b4b.svg)](https://streamlit.io/)
+[![Tests](https://img.shields.io/badge/tests-293%20passed-2ea44f.svg)](#testing)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
+
+</div>
+
+## Table of contents
+
+- [What this is](#what-this-is)
+- [Feature highlights](#feature-highlights)
+- [Quick start](#quick-start)
+- [Application tour](#application-tour)
+- [Architecture](#architecture)
+- [Repository layout](#repository-layout)
+- [Data and storage model](#data-and-storage-model)
+- [AI / ML integration](#ai--ml-integration)
+- [Tasks from mail and forms](#tasks-from-mail-and-forms)
+- [Theme system](#theme-system)
+- [Document intake](#document-intake)
+- [Posters and promotions](#posters-and-promotions)
+- [CLI and HTTP API](#cli-and-http-api)
+- [Deployment](#deployment)
+- [Documentation](#documentation)
+- [Configuration reference](#configuration-reference)
+- [Testing](#testing)
+- [Security notes](#security-notes)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## What this is
+
+MSM is a medium-scale operations framework for e-commerce: customer requirements,
+stock clearance, transit management, returns/refunds, finance read models, a role-based
+console, and a deterministic rule engine with optional local AI models.
+
+Everything is coordinated through a typed in-process event bus. Agents never call
+each other directly; side effects pass through an approval gate. The console, CLI and
+optional FastAPI service all share the same `EcomopsSystem` composition root.
+
+- **No external database required** — the event bus and an optional JSONL journal are the source of truth.
+- **Offline by default** — deterministic rules handle every LLM task; AI is opt-in.
+- **Multi-role** — MD, Supervisor, Staff and Accountant see different workspaces and actions.
+- **Runnable anywhere** — local Streamlit server, Docker container, or FastAPI service.
+- **Extensible** — add an event, a rule, an agent, or a theme without touching the domain core.
+
+---
+
+## Feature highlights
+
+| Area | Capability |
+|---|---|
+| **Operations** | Customer request → intent → demand → clearance → shipment → exception → return flows |
+| **Dashboards** | Ten permission-driven workspaces, compact KPI rail, event trace and charts |
+| **Tasks** | Extract actionable items from IMAP mail and customer forms into a per-user task board |
+| **Documents** | Upload PDF/PNG/JPEG; classify, extract fields, resolve, fill and download |
+| **Creatives** | Clearance posters and transit notices rendered with Pillow; web image search |
+| **Themes** | Six four-hue palettes: 3 frosted-glass and 3 flat; Soft/Crisp contrast |
+| **Assistant** | Role-aware Q&A with deterministic fallback and optional local LLM |
+| **AI connector** | Off / OpenAI-compatible endpoint / GGUF via llama-server, with number grounding |
+| **Integration** | CLI, FastAPI control plane, JSONL journal, Prometheus metrics |
+| **Deployment** | Dockerfile, Compose, local git repo and a LangChain Deep Agents deploy agent |
+
+---
 
 ## Quick start
 
-The application lives in the `msm/` folder and ships with a ready-to-run
-`.venv` (paths already rewritten for this location). To run the console:
+### 1. Local console (recommended)
+
+The repository ships a ready-to-run `.venv` with rewritten paths.
 
 ```bash
 cd msm
-.venv/bin/python -m streamlit run src/ecomops/app.py --server.port 8501
+.venv/bin/python -m streamlit run src/ecomops/app.py \
+  --server.port 8501 --server.headless true --server.address 127.0.0.1
 ```
 
-The console **menu sits in the top-right**, beside the Theme switcher. Every
-workspace is a raised, 3D-styled icon button with a four-hue outline; hover an
-icon to see its name. Each role sees only the workspaces it is permitted to
-open, and the selected view persists across actions. The sidebar keeps the
-assistant, configuration and sign-out; the assistant starts collapsed there.
+Open <http://localhost:8501>.
 
-The **Theme** pill in the top-right corner switches between six palettes. Three
-use the frosted-glass material (Obsidian Gold, Midnight Sapphire, Emerald Ledger)
-and three use a flat, solid-surface style (Terracotta Atelier, Rose Quartz,
-Graphite & Silver). Each palette carries four distinct hues and offers Soft and
-Crisp contrast levels. The choice only re-skins the console — posters and
-domain output keep their own branded colours.
+**Demo accounts** (password `msm`):
 
-### Tasks from mail and forms
+| Account | Role | Access |
+|---|---|---|
+| `md@msm.local` | Managing Director | Everything |
+| `supervisor@msm.local` | Supervisor | Operations, approvals, audit |
+| `staff@msm.local` | Staff | Day-to-day actions |
+| `accountant@msm.local` | Accountant | Finance and refunds only |
 
-The **Tasks** tab is the operator dashboard. It shows actionable items extracted
-from two sources:
-
-* **IMAP inbox** — configure host, port, user, password/app token, folder and
-  message limit under *Configuration → Inbox (IMAP)* in the sidebar, then press
-  **Read inbox** in the Tasks tab. TLS is the default; scanning is read-only
-  unless *Mark as read* is enabled. Defaults can be supplied with
-  `ECOMOPS_MAIL_HOST`, `ECOMOPS_MAIL_PORT`, `ECOMOPS_MAIL_USER`,
-  `ECOMOPS_MAIL_PASSWORD`, `ECOMOPS_MAIL_FOLDER`, `ECOMOPS_MAIL_LIMIT`,
-  `ECOMOPS_MAIL_SSL` and `ECOMOPS_MAIL_MARK_SEEN`. Credentials never leave the
-  browser session and are never written to the event journal.
-* **Customer form** — *Create tasks from a customer form* in the Tasks tab feeds
-  free text through the same extractor without needing an inbox connection.
-
-Both sources publish `EmailReceived` / `FormReceived` events. The task agent
-extracts `TaskExtracted` items with the deterministic offline rule, or with a
-configured local model through the existing fallback path. Tasks are scoped to
-the signed-in user (`assignee_email`); managers can opt into *All assignees*.
-Status changes are append-only `TaskStatusChanged` events, so the bus stays the
-single source of truth.
-
-To recreate the environment from scratch instead:
+### 2. Recreate the environment
 
 ```bash
 cd msm
-uv venv --python 3.12 .venv
+uv venv --python 3.14 .venv
 uv pip install --python .venv/bin/python -e ".[dev,ui,api,chat,docs]"
+```
 
-.venv/bin/ecomops demo --approve yes      # full scenario, auto-approves
-.venv/bin/ecomops demo                    # pauses: you decide each approval
-.venv/bin/ecomops request "3 mechanical keyboards to Paris ASAP"
-.venv/bin/ecomops exceptions              # delivery-exception path
-.venv/bin/ecomops stock                   # proactive overstock clearance
-.venv/bin/ecomops returns                 # buy, then refund a damaged item
+### 3. Verify
 
-# merge the bundled grocery catalogue (1,481 products) for interface testing
+```bash
+.venv/bin/ruff check src tests deploy_agent
+.venv/bin/python -m pytest -q
+curl http://localhost:8501/_stcore/health   # -> ok
+```
+
+---
+
+## Application tour
+
+![Workspace screenshot](docs/user-guide/screenshots/12-approvals.jpeg)
+
+The top-right icon rail is the primary navigation. Hover an icon to see its name; the
+active icon is filled with the current theme accent. The Theme pill sits beside it.
+The sidebar holds the Assistant, Configuration, About and Sign out.
+
+| Workspace | What it does |
+|---|---|
+| **Overview** | KPI rail, Run Demo, Carrier Exception, Sample History, snapshot and event charts |
+| **Customer request** | Submit free-text requests, inspect captured intent and clarifications |
+| **Stock clearance** | Analyse overstock, review discount strategies, generate clearance posters |
+| **Transit** | Shipments, carrier exceptions, customer shipping notices |
+| **Returns** | Damaged-item flow, refund/replacement assessments |
+| **Approvals** | Risk-scoped proposal queue; grant/deny individually or in bulk |
+| **Event trace** | Filter/search the event trail with correlation and causation ids |
+| **Inventory** | Search/filter catalogue; optionally merge the 1,481-product grocery CSV |
+| **Referrals & finance** | Revenue, refunds, markdown value and a deterministic referral ledger |
+| **Tasks** | Email/form-derived task board with status transitions and per-user scoping |
+
+A full walkthrough with screenshots is in [`docs/user-guide/MSM_User_Guide.pdf`](docs/user-guide/MSM_User_Guide.pdf).
+
+---
+
+## Architecture
+
+![Complete architecture](docs/architecture/msm-architecture.png)
+
+```text
+UI (Streamlit) ─┐
+CLI ────────────┼──> EcomopsSystem ──> EventBus ──> 5 Agents
+API (FastAPI) ──┘        │                │             │
+                         ├─ ApprovalGate   ├─ Journal    ├─ Inventory
+                         ├─ LLM/Rules      └─ Metrics    ├─ Finance
+                         └─ Embedder                     └─ Documents/Renderers
+```
+
+Key design rules:
+
+1. **Typed events only** — `Event` subclasses carry domain facts with shared envelope metadata.
+2. **Bus as store** — history is the source of truth; `bus.drain()` runs subscribers deterministically.
+3. **Approval gate** — every side effect starts as `ActionProposed` and waits for a human decision.
+4. **Deterministic fallback** — every LLM task has a rule handler; the app never depends on a model.
+5. **Theme skin only** — `theme.py` swaps CSS variables; domain logic and posters keep their own colours.
+6. **Pure read models** — metrics, finance and task state are folded from events, never mutated in place.
+
+Editable diagrams: [`docs/architecture/*.drawio`](docs/architecture/).
+Developer details: [`docs/developer-doc/MSM_Developer_Document.pdf`](docs/developer-doc/MSM_Developer_Document.pdf).
+
+---
+
+## Repository layout
+
+```text
+msm/
+├── src/ecomops/
+│   ├── app.py              Streamlit console, navigation, workspaces
+│   ├── theme.py            Six palettes, glass/flat CSS variables
+│   ├── system.py           Composition root and entry points
+│   ├── events.py / bus.py  Typed events, correlation/causation, history
+│   ├── policy.py           Approval gate and policy thresholds
+│   ├── llm.py / rules.py   LLM protocol, rule fallback, embedder
+│   ├── agents/             Customer, clearance, transit, returns, tasks
+│   ├── inventory.py        Catalogue, stock, matching
+│   ├── finance.py          Revenue/refund/referral read models
+│   ├── metrics.py          Event counters and Prometheus text
+│   ├── mail.py             IMAP reader and MIME parsing
+│   ├── tasks.py            Task fold and status transitions
+│   ├── chat.py / chatmodel.py  Assistant and model connector
+│   ├── documents/          Extract, classify, resolve, fill
+│   ├── advert.py           Poster and notice rendering
+│   ├── webimages.py        Web image search and cache
+│   ├── promotion.py        Dispatch channels and reports
+│   └── api.py / cli.py     HTTP control plane and CLI
+├── deploy_agent/           LangChain Deep Agents deployment automation
+├── data/                   Grocery catalogue and image cache
+├── docs/                   Architecture diagrams, user guide, developer doc
+├── tests/                  293 offline, deterministic tests
+├── Dockerfile / docker-compose.yml / .dockerignore
+├── AGENTS.md               Agent operating rules for this repo
+└── README.md               This document
+```
+
+---
+
+## Data and storage model
+
+There is **no relational database**. The system uses:
+
+| Store | Technology | Contents |
+|---|---|---|
+| Event bus | In-memory list | Typed events with correlation/causation |
+| Journal | JSONL file | Durable append-only audit trail |
+| Session state | Streamlit server-side | User, active view, theme, chat history, document/IMAP/chat config |
+| Inventory | In-memory dict | Built-in SKUs plus optional grocery CSV |
+| Catalogue | CSV | 1,481 grocery products |
+| Image cache | Disk | Downloaded web images |
+| Document workdirs | `tempfile.mkdtemp()` | Uploaded and filled files (0700) |
+| Task state | Derived | Fold of `TaskExtracted` + `TaskStatusChanged` |
+
+Core schemas are Pydantic v2 models. `Event` enforces `extra="forbid"`; `event_classes()`
+auto-registers new event types for the journal and API. See the developer document for
+every field.
+
+---
+
+## AI / ML integration
+
+### Deterministic first
+
+`rules.py` registers eight tasks used by agents and UI:
+
+```text
+capture_intent          extract_tasks
+develop_clearance_strategy   plan_route
+resolve_exception       assess_return
+write_advert_copy       write_transit_copy
+```
+
+`RuleBasedLLM` always works offline. `FallbackLLM` tries an optional MLX model
+(`mlx-community/Qwen3-4B-4bit`) and falls back to rules on any failure. Embeddings use
+`all-MiniLM-L6-v2` when `sentence-transformers` is installed, otherwise token overlap.
+
+### Chat connector
+
+![Chat connector](docs/architecture/msm-chat-connector.png)
+
+`src/ecomops/chatmodel.py` supports three modes:
+
+| Mode | Behaviour |
+|---|---|
+| `off` | No model call; deterministic answers only |
+| `endpoint` | Any OpenAI-compatible server; model id auto-discovered from `/models` |
+| `gguf` | Starts `llama-server` for a `.gguf` path, stops only its own process |
+
+The assistant builds a compact JSON snapshot, sends it with the question, and rejects
+answers containing numbers absent from the snapshot — preventing invented figures.
+
+Configure in **Configuration → Chat model** or with environment variables. Press
+**Test chat model** to verify the endpoint before use.
+
+---
+
+## Tasks from mail and forms
+
+The **Tasks** workspace is a per-user dashboard. Tasks come from:
+
+1. **IMAP inbox** — configure host, port, user and password/app token in the sidebar, then press **Read inbox** in Tasks. TLS is default; scanning is read-only unless **Mark as read** is enabled.
+2. **Customer form** — *Create tasks from a customer form* feeds free text through the same extractor without an inbox.
+
+Both sources publish `EmailReceived` or `FormReceived`. The `TaskExtractionAgent` uses the
+deterministic `extract_tasks` rule (or optional model) and emits `TaskExtracted` events.
+Status changes append `TaskStatusChanged`; the dashboard folds current state. Managers
+can enable **All assignees**.
+
+---
+
+## Theme system
+
+`theme.py` defines six palettes, each with four distinct hues:
+
+| Material | Themes |
+|---|---|
+| **Glass** | Obsidian Gold (default), Midnight Sapphire, Emerald Ledger |
+| **Flat** | Terracotta Atelier, Rose Quartz, Graphite & Silver |
+
+Each theme exposes surface, text, accent and glass tokens as CSS variables injected after
+the base stylesheet. Soft and Crisp contrast levels are available in the picker. Switching
+themes never rebuilds widgets; posters and domain output keep their own branded palettes.
+
+---
+
+## Document intake
+
+Attach a PDF, PNG or JPEG in the assistant composer:
+
+1. Validate type, size (10 MB) and page count (10).
+2. Extract text and word boxes (`pdftohtml` / `pdftoppm` + optional Tesseract OCR).
+3. Classify as purchase order, return slip, stock sheet or generic form.
+4. Extract fields from regex specs and resolve them against inventory and bus events.
+5. Ask the operator only for blocking gaps.
+6. Fill the original layout or produce a reflowed PDF, then offer download.
+
+The audit trail records `DocumentUploaded → DocumentFieldsResolved → DocumentFilled`
+with metadata only — never document bytes.
+
+---
+
+## Posters and promotions
+
+- **Clearance poster**: choose from applied discounts, proposals or stock; set company, old/new prices, up to five photos (upload or web), tone and format.
+- **Transit notice**: pick a routed shipment, confirm details, render a poster and send it to that customer through a chosen channel.
+- Rendering is Pillow-based with fixed branded colours, independent of the console theme.
+- Dispatch results are published as `PromotionPublished` / `TransitNoticeSent` events.
+
+---
+
+## CLI and HTTP API
+
+```bash
+# CLI
+.venv/bin/ecomops demo --approve yes
+.venv/bin/ecomops request "3 mechanical keyboards to Berlin ASAP"
+.venv/bin/ecomops exceptions
+.venv/bin/ecomops stock
+.venv/bin/ecomops returns
 .venv/bin/ecomops catalogue --grocery data/grocery_catalogue.csv --search "peanut butter"
-.venv/bin/ecomops request "2 jars of peanut butter to Berlin" \
-    --grocery data/grocery_catalogue.csv --approve yes
-.venv/bin/ecomops ui --grocery data/grocery_catalogue.csv
-
-.venv/bin/python -m pytest -q             # 137 tests, fully offline (+ UI tests with [ui])
-```
-
-Every command accepts `--journal PATH`, which appends each event to a durable
-JSONL file. Replay it later, with causal-chain verification:
-
-```bash
-.venv/bin/ecomops demo --approve yes --journal events.jsonl
 .venv/bin/ecomops replay events.jsonl --verify
-.venv/bin/ecomops replay events.jsonl --topic RefundIssued --correlation <id>
-```
-
-Add `--mlx` to any command to run a real local model via **mlx-lm** on Apple
-Silicon (default `mlx-community/Qwen3-4B-4bit`, cached on this machine). Pick a
-bigger model with `--model mlx-community/Qwen3-8B-4bit`, or set
-`ECOMOPS_MLX_MODEL`. Install the backend with `uv pip install -e ".[mlx]"`.
-If the model is not installed or fails to load, the system falls back to the
-deterministic rules and records `llm_backend=fallback:rule-based` on every
-event, so you can always see which backend made a decision. Model-size trade-offs
-(throughput vs reasoning quality on an M2) are documented in
-`../AGENTICAI_PLAN.md` §5.
-
-### MSM console (Streamlit UI)
-
-```bash
-uv pip install --python .venv/bin/python -e ".[ui]"
-.venv/bin/ecomops ui                      # opens http://localhost:8501
-```
-
-The console - branded **MSM** - drives the same `EcomopsSystem` as the CLI: run
-the demo scenario, submit a customer request, trigger the stock-clearance pass,
-report a carrier exception, simulate a damaged-item return, and grant/deny every
-gated action from the Approvals tab. The Overview tab visualises event flow, the
-Event trace tab can seed deterministic sample history, and the Inventory tab
-shows live prices, stock and reservations. A **Referrals & finance** tab adds
-revenue, refunds, markdowns and the referral ledger.
-
-Every session starts at a sign-in gate. Four roles are enforced in the UI, the
-API and the assistant:
-
-| Role | Sees | Can do |
-|---|---|---|
-| **MD** | everything | full access, configuration, all approvals |
-| **Supervisor** | operations + event trace | act and approve operations (never finance) |
-| **Accountant** | finance only | view finance, approve refunds |
-| **Staff** | operations | submit requests, run stock/transit/return actions |
-
-```bash
-# demo mode (default): one account per role, password `msm`
 .venv/bin/ecomops ui
-# md@msm.local · supervisor@msm.local · accountant@msm.local · staff@msm.local
 
-# skip the gate in tests/demos
-.venv/bin/ecomops ui --login supervisor      # md | supervisor | accountant | staff
-# or: ECOMOPS_AUTH_AUTOLOGIN=supervisor .venv/bin/ecomops ui
+# API
+.venv/bin/ecomops serve --port 8000
+curl http://localhost:8000/docs
 ```
 
-On this machine the console runs as the user service **`msm-ui`** on port 8501
-and restarts automatically:
+The API uses `SessionCodec` bearer tokens, role guards, and endpoints for requests,
+stock, exceptions, returns, approvals, documents, events, finance and metrics. Every
+command accepts `--journal PATH` for durable event replay.
+
+---
+
+## Deployment
+
+### Docker
 
 ```bash
-systemctl --user status msm-ui      # is it up?
-systemctl --user restart msm-ui     # after a code change
-journalctl --user -u msm-ui -f      # live log
+docker compose up -d --build
+curl http://localhost:8501/_stcore/health
 ```
 
-### SSO and authorisation
+The image uses Python 3.14 slim, installs poppler for document intake, and serves the
+console on port 8501 with a healthcheck.
 
-`ECOMOPS_SSO_MODE` selects how identity reaches MSM:
-
-| Mode | Use it for | What happens |
-|---|---|---|
-| `dev` (default) | local demo | password form against the four demo accounts; `ECOMOPS_DEMO_PASSWORD` overrides `msm` |
-| `oidc` | a real IdP | Streamlit `st.login()` authorization-code flow; configure `[auth]` in `.streamlit/secrets.toml` (Entra ID, Google, Okta, Keycloak…) |
-| `proxy` | oauth2-proxy / gatekeeper | trusted `X-Auth-Request-Email` + `X-Auth-Request-Groups` headers, accepted only with a matching `X-Ecomops-Proxy-Secret` |
-
-IdP identities are mapped to roles by e-mail (`ECOMOPS_ROLE_MAP`), then by group
-(`ECOMOPS_GROUP_MAP`), then the demo directory, then `ECOMOPS_DEFAULT_ROLE`
-(`staff`). Unknown users therefore get the least privilege:
-
-```bash
-export ECOMOPS_SSO_MODE=oidc
-export ECOMOPS_ROLE_MAP='{"boss@corp.com": "md"}'
-export ECOMOPS_GROUP_MAP='{"msm-finance": "accountant", "msm-ops": "supervisor"}'
-export ECOMOPS_DEFAULT_ROLE=staff
-export ECOMOPS_SESSION_SECRET='a-long-random-string'
-```
-
-Permissions are explicit: `view_operations`, `act_operations`,
-`approve_operations`, `view_finance`, `approve_finance`, `view_audit`, `manage`.
-Money movements (`issue_refund`) need `approve_finance`; everything else needs
-`approve_operations`. API sessions are HMAC-signed bearer tokens (8 h TTL).
-
-### Sidebar assistant (LangChain)
-
-The sidebar chat answers stock, approval, shipment, return, audit and finance
-questions. If the sidebar is collapsed, the circular **»** button at the top-left
-reopens it (the **Assistant** toggle inside the sidebar hides/shows just the chat).
-Deterministic intents run first (and enforce the same role matrix);
-if `langchain-core` + `langchain-openai` are installed it then calls any
-OpenAI-compatible endpoint. The default is a local **Lemonade** server with
-**Llama-3.2-1B-Instruct** (GGUF, 0.8 GB — under the 1.5 GB cap):
-
-```bash
-# one-time: download + load the small chat model (needs local Lemonade)
-lemonade pull Llama-3.2-1B-Instruct-GGUF     # 0.8 GB
-lemonade load Llama-3.2-1B-Instruct-GGUF --ctx-size 4096
-lemonade status                              # shows the loaded model
-
-uv pip install --python .venv/bin/python -e ".[chat]"
-.venv/bin/ecomops ui
-```
-
-`ECOMOPS_CHAT_BASE_URL` (default `http://127.0.0.1:13305/api/v1`) and
-`ECOMOPS_CHAT_MODEL` (default `Llama-3.2-1B-Instruct-GGUF`) point the assistant
-elsewhere. If Lemonade is not running, the model is missing, or
-`ECOMOPS_CHAT_DISABLE_LLM=1` is set, answers fall back to the deterministic
-summary, so the console never breaks offline.
-
-#### GGUF connector
-
-`src/ecomops/chatmodel.py` is a drop-in connector with two modes, configured
-either in *Configuration → Chat model* in the sidebar or with environment vars:
-
-* **Local endpoint** (`ECOMOPS_CHAT_MODE=endpoint`) — connect to any running
-  OpenAI-compatible server (`ECOMOPS_CHAT_BASE_URL`, `ECOMOPS_CHAT_MODEL`,
-  `ECOMOPS_CHAT_API_KEY`). Leave the model id blank to auto-discover the first
-  loaded model. The connector also works with llama.cpp's `llama-server`,
-  Ollama and vLLM.
-* **GGUF file** (`ECOMOPS_CHAT_MODE=gguf`, `ECOMOPS_CHAT_GGUF=/path/to/chat.gguf`)
-  — the connector starts `llama-server` for that file on demand
-  (`ECOMOPS_CHAT_PORT` default `38285`, `ECOMOPS_CHAT_CTX` default `8192`,
-  `ECOMOPS_CHAT_NGL=-1` uses all GPU layers), and stops the process it started
-  on shutdown. Use **Test chat model** in the sidebar to verify it.
-
-When you later add a GGUF, set the mode to *GGUF file*, enter its path and press
-**Test chat model** — no code change needed. The assistant falls back to the
-deterministic rules until the model answers, and rejects invented numbers so a
-small model cannot leak false figures into the console.
-
-### Document intake
-
-Attach a PDF, PNG or JPEG with the composer's attachment control. MSM reads the
-document locally, classifies it (purchase order, return/refund slip, stock
-sheet, or generic), fills every field it can answer from the catalogue and the
-event store, and asks only for the rest:
-
-```bash
-# text-layer PDFs need nothing beyond poppler
-.venv/bin/ecomops doc extract tests/fixtures/documents/return_slip.pdf
-.venv/bin/ecomops doc fill tests/fixtures/documents/return_slip.pdf \
-    -a sku=SKU-1001 -a shipment_id= --mode original
-```
-
-Required gaps block the fill; optional gaps (such as a shipment id) are
-reported but never block. Answers are re-resolved, so a corrected SKU also
-pulls its description, price and stock from the catalogue. Output is a PDF in
-the original geometry (default) or a clean re-flowed rebuild, always with an
-"Answers & sources" annex. Scans and photos need `tesseract-ocr`:
-
-```bash
-sudo apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd
-```
-
-`ECOMOPS_OCR_LANGS` (default `eng`) selects the OCR languages. See
-`docs/document-intake-plan.md` for the architecture and known limits.
-
-### HTTP API
-
-```bash
-uv pip install --python .venv/bin/python -e ".[api]"
-.venv/bin/ecomops serve --port 8000      # OpenAPI docs at /docs
-.venv/bin/ecomops serve --no-auth        # local demo only: no bearer tokens
-```
-
-The API is a third adapter over the same `EcomopsSystem` (the CLI and UI are the
-other two). It exposes the entry points and read models, so an existing web form,
-WMS or carrier webhook can write into the system without shelling out to Python.
-Authentication is on by default: log in once, then send the bearer token.
-
-```bash
-TOKEN=$(curl -s localhost:8000/auth/login \
-  -H 'content-type: application/json' \
-  -d '{"email":"md@msm.local","password":"msm"}' | python -c 'import json,sys;print(json.load(sys.stdin)["token"])')
-curl -s localhost:8000/auth/me -H "authorization: Bearer $TOKEN"
-```
-
-| Method | Path | Permission | Purpose |
-|---|---|---|---|
-| `POST` | `/auth/login` | — | demo/SSO-offload login → bearer token |
-| `GET` | `/auth/me` | any | current user + permissions |
-| `POST` | `/requests` | act_operations | `{customer_id, text, channel}` → run the pipeline |
-| `POST` | `/stock-report` | act_operations | proactive clearance (`min_age_days`, `min_stock`, `max_items`) |
-| `POST` | `/exceptions` | act_operations | carrier webhook (`shipment_id`, `exception`, `detail`) |
-| `POST` | `/approvals/{proposal_id}` | approve_operations / approve_finance | `{granted, decided_by, comment}` |
-| `GET` | `/approvals` | approval role | queue filtered to what your role may decide |
-| `GET` | `/events` | view_audit | audit trail (`topic`, `correlation_id`, `limit`) |
-| `GET` | `/inventory` | view_operations | products (+ ratings/descriptions), counts by source/category, reservations |
-| `GET` | `/shipments` | view_operations | routed shipments |
-| `GET` | `/catalogue/match` | view_operations | rank products for `query` (same matcher the agent uses) |
-| `POST` | `/documents` | any signed-in | base64 PDF/PNG/JPEG → resolved document job |
-| `GET` | `/documents` | any signed-in | open document jobs |
-| `GET` | `/documents/{id}` | any signed-in | one job with rows, sources and the review message |
-| `POST` | `/documents/{id}/answers` | any signed-in | `{answers: {sku: …}}` or `{text: "sku=…"}` |
-| `POST` | `/documents/{id}/fill` | any signed-in | `{mode: "original"\|"reflow"}` → PDF download |
-| `DELETE` | `/documents/{id}` | any signed-in | discard the temp job |
-| `GET` | `/finance` | view_finance | revenue, refunds, markdowns, referral ledger |
-| `GET` | `/metrics` | view_operations | Prometheus text (`ecomops_*` counters/gauges) |
-| `GET` | `/healthz` | — | liveness + backend + queue depth |
-
-```bash
-curl -s localhost:8000/requests \
-  -H "authorization: Bearer $TOKEN" \
-  -H 'content-type: application/json' \
-  -d '{"customer_id":"CUST-1","text":"2 wireless bluetooth earbuds to Berlin ASAP"}'
-curl -s localhost:8000/approvals -H "authorization: Bearer $TOKEN"
-curl -s 'localhost:8000/catalogue/match?query=paper%20towels' -H "authorization: Bearer $TOKEN"
-curl -s localhost:8000/finance -H "authorization: Bearer $TOKEN"
-curl -s localhost:8000/metrics -H "authorization: Bearer $TOKEN" | grep ecomops_refunds
-```
-
-In `proxy` mode the reverse proxy supplies the identity instead of a bearer token.
-`create_app(require_auth=False)` disables the gate for scripts and tests.
-
-A single in-process `asyncio.Lock` serialises bus drains. For horizontal
-scaling, replace the bus (Redis Streams/NATS) — the API and agents do not change.
-
-## Grocery catalogue (interface testing)
-
-`data/grocery_catalogue.csv` is the public *Grocery Dataset* export: 1,757 rows
-across 19 sub-categories with prices, discounts, ratings, features and marketing
-copy (source: Kaggle, kept locally for demo/testing). It is used as **realistic
-demo data for the UI/API**, not for model training — there is no classifier,
-embedding index or fine-tune here.
-
-```bash
-.venv/bin/ecomops catalogue --grocery data/grocery_catalogue.csv   # browse
-.venv/bin/ecomops catalogue --grocery data/grocery_catalogue.csv --match "olive oil"
-.venv/bin/ecomops ui --grocery data/grocery_catalogue.csv          # merged UI
-.venv/bin/ecomops serve --grocery data/grocery_catalogue.csv       # merged API
-```
-
-`load_grocery_catalogue` cleans the CSV deterministically, so the same file always
-produces the same SKUs:
-
-* prices are parsed (`$1,999.99 ` → `1999.99`), commas included;
-* `After $5 OFF` / `After $5 - $8 OFF` become a numeric discount;
-* `Rated 4.3 out of 5 stars based on 265 reviews.` becomes rating + review count;
-* duplicate titles (250 in the file) collapse to one product, junk rows
-  (`Page Not Found!`, no usable price) are skipped — 1,481 products load;
-* stock and age come from a stable hash of the title, so the catalogue mixes
-  healthy, ageing and out-of-stock lines (~8%) without a warehouse feed;
-* products keep the original sub-category as their category, and get
-  `GRO-####` SKUs after sorting, so a `--grocery-limit` cut never renumbers the
-  rows it keeps.
-
-The ten built-in demo SKUs stay in front, so the scenario texts, the event
-traces and the existing tests keep their meaning. In the UI, the sidebar has a
-**Merge grocery dataset** toggle (on by default when the file is present) plus
-search/category filters in the Inventory tab.
-
-Matching a short query against a long marketplace title needed a small lexical
-upgrade: the fallback embedder treats *full token coverage* (every token of the
-shorter text appears in the longer one) as a strong match, scaled by the extra
-text. `"paper towels"` now finds
-`"Bounty Advanced Paper Towels, 2-Ply, 101 Sheets, 12-count"` (0.68) while
-`"quantum flux capacitor"` still fails (0.10). Because a merged catalogue can
-have hundreds of ageing lines, the stock report is capped to the costliest 25 by
-default (`--grocery` does not change that; `/stock-report` takes `max_items`).
-
-## What each agent owns
-
-| Agent | Consumes | Produces | Side effects (all gated) |
-|---|---|---|---|
-| **Customer Requirements** | `CustomerRequestReceived` | `CustomerIntentCaptured`, `DemandSignal`, `IntentNeedsClarification` | none — it never acts, only structures |
-| **Stock Clearance** | `DemandSignal`, `StockLevelReport` | `ClearanceStrategyProposed`, `StockReserved`, `DiscountApplied` | reserve stock, apply markdown |
-| **Transit Management** | `StockReserved`, `DeliveryExceptionReported` | `ShipmentRouted`, `ExceptionResolutionProposed`, `DeliveryExceptionResolved` | dispatch shipment, resolve exception |
-| **Returns & Refunds** | `CustomerIntentCaptured` (return/complaint), `ShipmentRouted` | `ReturnRequested`, `ReturnAssessed`, `ReturnNeedsOrder`, `RefundIssued`, `ReplacementAuthorised`, `ReturnRejected` | issue refund, authorise replacement |
-
-The **approval gate** sits between every proposal and its execution. An agent
-publishes `ActionProposed`; the gate assesses it against `PolicyConfig` and
-either approves autonomously, raises `ApprovalRequested` for a human, or
-rejects and forces an escalation. Nothing that moves money beyond a small
-discount, or that ships/destroys stock, runs without a recorded decision.
-
-## Design decisions
-
-* **Deterministic in-process bus.** `publish` enqueues, `drain` processes FIFO
-  and awaits each handler. The same inputs always yield the same event
-  sequence — which is what makes the tests and the demo reproducible with no
-  broker. The `subscribe/publish/drain/history` contract is small enough to swap
-  for Redis Streams or NATS without touching agent code.
-* **Correlation + causation for free.** An event published while handling
-  another inherits its `correlation_id` and records its own `causation_id`, so a
-  whole business conversation can be replayed from `bus.conversation(id)`.
-* **Ambiguity escalates, it never guesses.** A product the customer names that
-  cannot be matched to the catalogue emits `IntentNeedsClarification` instead of
-  reserving the wrong thing.
-* **LLM with a deterministic fallback.** Agents call `llm.complete(task=...)`;
-  the local MLX backend and the rule-based backend return the same shapes and are
-  validated by the same pydantic schemas, so a fallback run exercises identical
-  downstream logic. The model does the interpretive step (choosing a route, a
-  markdown, a resolution); the rules keep the system honest and offline-runnable.
-* **Semantic matching.** Catalogue matching and substitution use
-  `all-MiniLM-L6-v2` via sentence-transformers when installed, degrading to a
-  pure-Python token-overlap embedder otherwise. The fallback also scores full
-  token coverage so short queries match long marketplace titles (see the grocery
-  catalogue section).
-* **Returns close the loop.** The customer agent already captured return and
-  complaint intent; the Returns agent turns that into an assessed decision.
-  It matches against `ShipmentRouted` events rather than reading the transit
-  agent's table, and a delivered item can only be claimed once.
-* **The audit trail outlives the process.** `--journal` appends every event to
-  JSONL; `replay --verify` rebuilds typed events and checks that every
-  causation id points at an earlier record. There is no database to operate.
-* **Operations are observable.** `/metrics` derives counters from the event
-  history rather than a parallel metrics store — if it happened, it is counted.
-
-## Business value
-
-Reduced manual coordination across four workflows: an agent's output becomes
-another's input through the bus, so no person has to relay stock, shipment or
-return state between teams. The project shows Agentic AI organised around
-operational responsibilities rather than one general-purpose chatbot.
-
-## What matters when extending this
-
-A client rollout should define **agent permissions**, **escalation paths** and
-**which actions require human approval** — all three live in `PolicyConfig` and
-the `EscalationRaised` flow, and are the first things to configure. Evaluation
-should cover **intent capture**, **coordination accuracy** and **exception
-resolution**; the test suite is a starting harness for all three. Inventory and
-shipment changes should be assessed against existing business controls before
-autonomous execution is widened. Returns add `ReturnPolicy` (window, restocking
-fee, damaged-goods handling) as a second policy surface; the journal and
-`/metrics` endpoint are the audit and observability seams to connect to existing
-controls. No quantified throughput, revenue or deployment scale is claimed here.
-
-## Deployment Deep Agent + local repo
-
-`deploy_agent/` is a LangChain **Deep Agents** automation agent backed by a local
-OpenAI-compatible GGUF runtime (llama-server). It inspects the repo, runs tests,
-checks health, and can generate deployment files, commit locally, and manage the
-local Docker lifecycle — mutating tools require the phrase `DEPLOY-MSM` in the
-request, and no tool pushes to a remote.
+### Deep Agents deployment agent
 
 ```bash
 export ECOMOPS_DEEPAGENTS_BASE_URL=http://127.0.0.1:38285/v1
 export ECOMOPS_DEEPAGENTS_MODEL=MiMo-V2.6-Distill-Qwen-9B-Q8_0
 export ECOMOPS_DEEPAGENTS_API_KEY=<local-llama-server-key>
+
 .venv/bin/python -m deploy_agent.cli "check repo status and run the tests"
+.venv/bin/python -m deploy_agent.cli "build the Docker image DEPLOY-MSM"
 ```
 
-The repo was initialised locally with one commit (`git log --oneline`), and
-`Dockerfile`, `docker-compose.yml` and `.dockerignore` provide the local Docker
-deployment target. See `deploy_agent/README.md` for the full tool/safety table.
+The agent uses the LangChain Deep Agents SDK with the local GGUF runtime. Read-only
+tools are free; mutating tools require the exact phrase `DEPLOY-MSM` in the request.
+No tool pushes to a remote. See [`deploy_agent/README.md`](deploy_agent/README.md).
 
-## User guide
+---
 
-A detailed 21-page PDF guide with screenshots of every workspace, workflow
-instructions, roles, themes, assistant/document intake, chat connector,
-deployment agent and architecture diagrams is at:
+## Documentation
 
-`docs/user-guide/MSM_User_Guide.pdf` (rebuild with `docs/user-guide/build_guide.py`).
+| Document | Contents |
+|---|---|
+| [User guide](docs/user-guide/MSM_User_Guide.pdf) | 21 pages, all features, workflows and screenshots |
+| [Developer document](docs/developer-doc/MSM_Developer_Document.pdf) | 16 pages: architecture, schemas, storage, UI/UX, AI, flows, security |
+| [Architecture diagrams](docs/architecture/) | Editable `.drawio` sources and PNG exports |
+| [Document intake plan](docs/document-intake-plan.md) | Intake pipeline design and limits |
+| [This README](README.md) | Setup and navigation |
 
-## Developer document
+---
 
-A source-grounded 16-page developer document with architecture diagrams, Pydantic
-data schemas, storage model, UI/UX design tokens, AI/ML integration, runtime flows,
-API/CLI, deployment and security/operations is at:
+## Configuration reference
 
-`docs/developer-doc/MSM_Developer_Document.pdf` (rebuild with
-`docs/developer-doc/build_developer_doc.py`).
+| Variable | Default | Purpose |
+|---|---|---|
+| `ECOMOPS_SSO_MODE` | `dev` | `dev`, `oidc` or `proxy` authentication |
+| `ECOMOPS_DEMO_PASSWORD` | `msm` | Demo credential |
+| `ECOMOPS_SESSION_SECRET` | dev placeholder | HMAC key for API bearer tokens |
+| `ECOMOPS_AUTH_AUTOLOGIN` | unset | Test-only role bypass |
+| `ECOMOPS_GROCERY` | auto | CSV path or `none` to disable |
+| `ECOMOPS_MAIL_HOST` | unset | IMAP host |
+| `ECOMOPS_MAIL_PORT` | `993` | IMAP port |
+| `ECOMOPS_MAIL_USER` / `ECOMOPS_MAIL_PASSWORD` | unset | IMAP credentials |
+| `ECOMOPS_MAIL_FOLDER` / `LIMIT` / `SSL` / `MARK_SEEN` | `INBOX` / `20` / `true` / `false` | Inbox behaviour |
+| `ECOMOPS_CHAT_MODE` | `endpoint` | `off`, `endpoint` or `gguf` |
+| `ECOMOPS_CHAT_BASE_URL` | Lemonade `13305` | Chat endpoint |
+| `ECOMOPS_CHAT_MODEL` | `Llama-3.2-1B-Instruct-GGUF` | Model id |
+| `ECOMOPS_CHAT_GGUF` | unset | GGUF file path |
+| `ECOMOPS_CHAT_PORT` / `CTX` / `NGL` | `38285` / `8192` / `-1` | llama-server settings |
+| `ECOMOPS_DEEPAGENTS_*` | local llama-server | Deployment agent model/key |
+| `ECOMOPS_WEB_IMAGES` | `on` | Enable web image search |
 
-## Architecture diagrams
+---
 
-Editable draw.io sources and rendered PNGs live in `docs/architecture/`:
+## Testing
 
-- `msm-architecture.drawio` / `.png` — the whole console: entry points, auth,
-  UI shell, composition root, event bus, five agents, data/renderers, storage
-  and the chat connector.
-- `msm-chat-connector.drawio` / `.png` — a focused view of the chat connector:
-  config → modes (off / endpoint / GGUF) → LangChain → local model → grounding
-  guard → answer or rule fallback.
-
-Both are editable in draw.io; the `.json` files beside them are the graph
-sources used for deterministic auto-layout.
-
-## Layout
-
+```bash
+.venv/bin/ruff check src tests deploy_agent
+.venv/bin/python -m pytest -q
 ```
-msm/
-  src/ecomops/
-    events.py              typed domain events (the message catalogue)
-    bus.py                 in-process event bus, correlation/causation, replay
-    journal.py             durable JSONL event log + causal verification
-    llm.py                 MLX (mlx-lm) + rule-based fallback, embedders
-    rules.py               deterministic handlers for each LLM task
-    catalogue.py           GroceryDataset.csv -> cleaned demo catalogue (no training)
-    inventory.py           catalogue, stock, ageing, reservations, restock
-    policy.py              approval gate: policy engine + human decisions
-    auth.py                roles, permissions, signed sessions, SSO mapping
-    finance.py             finance + referral read models
-    chat.py                sidebar assistant (rules + LangChain)
-    metrics.py             event-derived counters + Prometheus text
-    system.py              composition root (bus + gate + 4 agents)
-    api.py                 FastAPI control plane (optional [api] extra)
-    cli.py                 demo / request / exceptions / stock / returns /
-                           catalogue / replay / serve / ui
-    app.py                 MSM console, Streamlit (optional [ui] extra)
-    agents/
-      base.py              propose → approve → act handshake
-      customer.py          Customer Requirements Agent
-      clearance.py         Stock Clearance Agent
-      transit.py           Transit Management Agent
-      returns.py           Returns & Refunds Agent
-  data/grocery_catalogue.csv  GroceryDataset.csv export (interface-test data)
-  data/image_cache/         cached web images for poster generation (regenerable)
-  docs/                     document-intake plan + architecture diagrams
-  src/ecomops/mail.py       stdlib IMAP reader (injectable client, offline tests)
-  src/ecomops/tasks.py      task dashboard read model + status transitions
-  src/ecomops/agents/tasks.py  email/form -> TaskExtracted agent
-  tests/                   258 tests, offline, deterministic (+ UI smoke tests)
-  .streamlit/config.toml    console theme and browser settings
-  .venv/                    bundled environment (relocated; paths already fixed)
-  .github/workflows/ci.yml ruff + import check + pytest + demo
-```
+
+- **293 tests**, fully offline and deterministic.
+- Coverage includes UI flows, role gates, themes, event bus, rules, agents, documents,
+  posters, notices, mail, task extraction, chat connector and deployment tools.
+
+---
+
+## Security notes
+
+- The demo mode prints the password `msm` and grants full MD access. **Do not expose it
+  to the internet**; bind to `127.0.0.1` or configure OIDC/proxy with TLS.
+- Set `ECOMOPS_SESSION_SECRET` to a long random value before exposing the API.
+- IMAP and chat secrets stay in the browser session or environment and are hidden in reprs.
+- All user-derived HTML is escaped before `unsafe_allow_html` rendering.
+- Uploads are size/page limited, filenames are sanitized, and temp dirs are `0700`.
+- The deployment agent requires `DEPLOY-MSM` for mutations and never pushes to a remote.
+
+---
+
+## Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| Assistant answers from rules only | Chat mode/endpoint, `Test chat model` button |
+| Tasks list empty | Configure IMAP or use the customer form in Tasks |
+| PDF upload fails | Install poppler; check 10 MB / 10 page limits |
+| Theme looks flat/glass unexpectedly | Theme picker badge and contrast setting |
+| API rejects bearer tokens | `ECOMOPS_SESSION_SECRET` must match between issuer and verifier |
+| Docker build fails | Ensure Docker is installed and port 8501 is free |
+
+---
+
+## Contributing
+
+1. Inspect first: `repo_status`, `list_files`, `read_file` (or plain git/grep).
+2. Keep changes small; add a test for new behaviour.
+3. Run `ruff` and `pytest` before committing.
+4. Add or update docs under `docs/` and regenerate PDFs with the build scripts.
+5. Never commit secrets; `.env` is ignored.
+
+See [`AGENTS.md`](AGENTS.md) for the deployment agent operating rules.
+
+---
+
+## License
+
+MIT. See `LICENSE` if present; otherwise the project is provided as-is for demonstration
+and extension.
