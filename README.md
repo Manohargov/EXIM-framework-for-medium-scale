@@ -162,7 +162,8 @@ Key design rules:
 5. **Theme skin only** — `theme.py` swaps CSS variables; domain logic and posters keep their own colours.
 6. **Pure read models** — metrics, finance and task state are folded from events, never mutated in place.
 
-Editable diagrams: [`docs/architecture/*.drawio`](docs/architecture/).
+The diagram also includes the local git repository, GitHub release target, documentation
+set and deployment agent. Editable sources: [`docs/architecture/*.drawio`](docs/architecture/).
 Developer details: [`docs/developer-doc/MSM_Developer_Document.pdf`](docs/developer-doc/MSM_Developer_Document.pdf).
 
 ---

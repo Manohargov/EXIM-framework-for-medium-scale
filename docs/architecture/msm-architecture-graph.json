@@ -11,6 +11,7 @@
     {"id":"cli","label":"CLI<br>ecomops demo / request / replay / ui","group":"entry","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;","width":200,"height":60},
     {"id":"ui","label":"Streamlit console<br>app.py · port 8501","group":"entry","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;","width":190,"height":55},
     {"id":"api","label":"FastAPI control plane<br>api.py · optional","group":"entry","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;","width":190,"height":55},
+    {"id":"deploy_agent","label":"Deployment Deep Agent<br>LangChain Deep Agents SDK<br>DEPLOY-MSM confirmation gate","group":"entry","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;","width":220,"height":70},
 
     {"id":"auth","label":"Auth gateway<br>dev (demo password) | OIDC | proxy","group":"ui","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;","width":190,"height":60},
     {"id":"nav","label":"Top-right icon nav<br>10 role-filtered workspaces + Theme pill","group":"ui","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;","width":210,"height":60},
@@ -48,7 +49,10 @@
     {"id":"fallback","label":"Fallback<br>deterministic rules when model is absent<br>rejects invented numbers","group":"chat","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;","width":210,"height":65},
 
     {"id":"journal","label":"EventJournal<br>JSONL event trail","group":"storage","style":"shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;","width":170,"height":65},
-    {"id":"cache","label":"Image cache + PDF workdirs<br>temp files (0700)","group":"storage","style":"shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;","width":190,"height":65}
+    {"id":"cache","label":"Image cache + PDF workdirs<br>temp files (0700)","group":"storage","style":"shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;","width":190,"height":65},
+    {"id":"git_repo","label":"Local git repo<br>msm/ · commits · MIT LICENSE","group":"storage","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;","width":180,"height":60},
+    {"id":"docs_set","label":"Documentation set<br>User guide · Developer doc · Write-up<br>draw.io diagrams + screenshots","group":"storage","style":"rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;","width":220,"height":70},
+    {"id":"github","label":"GitHub repository<br>EXIM-framework-for-medium-scale<br>README · About · topics · MIT","group":"external/repos","style":"rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;","width":230,"height":70}
   ],
   "edges": [
     {"source":"user_operator","target":"ui","label":"HTTPS / localhost:8501"},
@@ -111,6 +115,12 @@
     {"source":"gguf_mode","target":"llama_server","label":"Popen / stop"},
     {"source":"endpoint_mode","target":"lemonade","label":"OpenAI API"},
     {"source":"llama_server","target":"chat_ops","label":"answer"},
-    {"source":"lemonade","target":"chat_ops","label":"answer"}
+    {"source":"lemonade","target":"chat_ops","label":"answer"},
+
+    {"source":"deploy_agent","target":"system","label":"run_tests / health_check"},
+    {"source":"deploy_agent","target":"git_repo","label":"inspect / commit"},
+    {"source":"docs_set","target":"git_repo","label":"docs + diagrams"},
+    {"source":"git_repo","target":"github","label":"git push"},
+    {"source":"github","target":"user_operator","label":"clone / read docs"}
   ]
 }
