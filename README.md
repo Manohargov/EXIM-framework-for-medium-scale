@@ -26,10 +26,8 @@
 - [Quick start](#quick-start)
 - [Application tour](#application-tour)
 - [Architecture](#architecture)
-  - [System diagram (draw.io)](#system-diagram-drawio)
-  - [Layered view](#layered-view)
+  - [Full system diagram (draw.io)](#full-system-diagram-drawio)
   - [Event lifecycle](#event-lifecycle)
-  - [Design rules](#design-rules)
   - [Diagram sources](#diagram-sources)
 - [Repository layout](#repository-layout)
 - [Data and storage model](#data-and-storage-model)
@@ -156,60 +154,143 @@ A full walkthrough with screenshots is in [`docs/user-guide/MSM_User_Guide.pdf`]
 
 ## Architecture
 
-### System diagram (draw.io)
+This diagram is functional: every edge says **what changes the data** (free text →
+typed events → proposals → approvals → folded read models → dashboards, PDFs and
+posters), and each numbered stage names the **module that owns it**, so you always
+know which file to open. The approval stage is shown as its own gate because that is
+where the system refuses to run unattended: no side effect reaches the bus without a
+human decision.
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif","fontSize":"13px","primaryColor":"#eef2ff","primaryTextColor":"#0f172a","primaryBorderColor":"#818cf8","lineColor":"#94a3b8","clusterBkg":"#f8fafc","clusterBorder":"#e2e8f0","edgeLabelBackground":"#ffffff","titleColor":"#334155"},"flowchart":{"curve":"basis","nodeSpacing":30,"rankSpacing":40,"padding":8,"useMaxWidth":true}}}%%
+flowchart TB
+
+    subgraph ENTRY["1 · ENTRY — four surfaces, one composition root"]
+        direction LR
+        UI["🖥️ Streamlit console<br/><i>app.py · icon nav · KPI rail · six themes</i>"]
+        CLI["⌨️ CLI<br/><i>cli.py · demo / request / replay</i>"]
+        API["🔌 FastAPI<br/><i>api.py · bearer tokens · role guards</i>"]
+        DAG["🤖 Deploy Deep Agent<br/><i>deploy_agent/ · DEPLOY-MSM gate</i>"]
+    end
+
+    subgraph CORE["2 · CORE — system.py · the only place everything is wired"]
+        SYS["EcomopsSystem<br/><b>bus · ApprovalGate · LLM+rules · embedder · inventory</b>"]
+    end
+
+    subgraph BUSG["3 · BUS — bus.py · typed events are the source of truth"]
+        direction TB
+        BUS["EventBus<br/><b>data: typed events + correlation_id + causation_id</b><br/>drain() runs subscribers in registration order"]
+        JOURNAL["EventJournal<br/><b>data: append-only JSONL audit trail</b>"]
+        METRICS["Metrics<br/><b>data: counters → Prometheus text</b>"]
+    end
+
+    subgraph DOMAIN["4 · DOMAIN — agents/ + rules.py · agents only exchange events"]
+        direction TB
+        AGENTS["5 agents<br/><b>event → snapshot → prompt → JSON → Pydantic → event</b><br/>customer · clearance · transit · returns · tasks"]
+        RULES["8 deterministic rules<br/><b>capture_intent · extract_tasks · plan_route · assess_return · …</b><br/>RuleBasedLLM always answers offline"]
+        MODEL["optional local model<br/><i>MLX Qwen · chat connector: off / endpoint / gguf</i>"]
+        AGENTS -.->|"ask"| RULES
+        AGENTS -.->|"try first"| MODEL
+        MODEL -.->|"any failure → rules"| RULES
+    end
+
+    subgraph GATE["5 · APPROVAL — policy.py · no side effect without a human"]
+        direction TB
+        PROPOSE["ActionProposed<br/><b>data: risk scope + proposed effect</b>"]
+        REQUEST["ApprovalRequested → Approvals workspace"]
+        DECIDE{"decision"}
+        ACT["act()<br/><b>data: effect → new domain events</b>"]
+        REJECT["ActionRejected<br/><i>recorded, nothing executed</i>"]
+        PROPOSE --> REQUEST --> DECIDE
+        DECIDE -->|"approved"| ACT
+        DECIDE -->|"rejected"| REJECT
+    end
+
+    subgraph READ["6 · READ MODELS — pure folds, never mutated in place"]
+        direction LR
+        FIN["Finance<br/><b>revenue · refunds · markdown · referrals</b>"]
+        TASKS["Task board<br/><b>fold of TaskExtracted + TaskStatusChanged</b>"]
+        DASH["KPI rail · Event trace<br/><b>fold of everything before it</b>"]
+    end
+
+    subgraph OUT["7 · OUTPUT — documents/ · advert.py · promotion.py"]
+        direction LR
+        DOC["Document intake<br/><b>bytes → fields → filled PDF</b>"]
+        POST["Posters and notices<br/><b>Pillow · brand colours, theme-independent</b>"]
+        CHAN["Channels<br/><b>dispatch → PromotionPublished / TransitNoticeSent</b>"]
+    end
+
+    MAIL["📮 IMAP inbox and customer form<br/><i>mail.py · MIME parse</i>"]
+    REL["8 · RELEASE — local git → git push → GitHub<br/><b>README · 3 PDFs · draw.io diagrams · MIT · About</b>"]
+
+    UI -->|"submit / approve"| SYS
+    CLI -->|"request / demo"| SYS
+    API -->|"automation"| SYS
+    DAG -->|"run_tests / health_check"| SYS
+    SYS --> BUS
+    MAIL -->|"EmailReceived / FormReceived"| BUS
+    BUS -->|"drain → subscribe"| AGENTS
+    AGENTS -->|"risky side effect"| PROPOSE
+    ACT -->|"domain events"| BUS
+    REJECT -.->|"audit"| JOURNAL
+    BUS -.-> JOURNAL
+    BUS -.-> METRICS
+    BUS -->|"history"| READ
+    BUS -->|"resolve fields against"| DOC
+    AGENTS -->|"copy / layout"| POST
+    POST --> CHAN
+    DOC -.->|"DocumentFilled"| BUS
+    CHAN -.->|"Published / Sent"| BUS
+    READ -->|"rendered"| UI
+    DAG -.->|"commit (never push)"| REL
+    REL -.->|"clone / read docs"| UI
+
+    classDef entry fill:#eef2ff,stroke:#818cf8,color:#0f172a
+    classDef core fill:#f5f3ff,stroke:#a78bfa,color:#0f172a
+    classDef bus fill:#e0f2fe,stroke:#38bdf8,color:#0f172a
+    classDef domain fill:#ccfbf1,stroke:#2dd4bf,color:#0f172a
+    classDef gate fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+    classDef fold fill:#dcfce7,stroke:#4ade80,color:#0f172a
+    classDef out fill:#fce7f3,stroke:#f472b6,color:#0f172a
+    class UI,CLI,API,DAG entry
+    class SYS core
+    class BUS,JOURNAL,METRICS bus
+    class AGENTS,RULES,MODEL domain
+    class PROPOSE,REQUEST,DECIDE,ACT,REJECT gate
+    class FIN,TASKS,DASH fold
+    class DOC,POST,CHAN,MAIL,REL out
+```
+
+Points worth knowing, because each one exists for a reason that is easy to
+re-break:
+
+- **Agents never call each other.** They only exchange typed events; an agent
+  that needs something publishes an event and lets a subscriber react, so any
+  flow can be replayed from the journal alone.
+- **`drain()` is deterministic.** Subscribers run in registration order on one
+  thread — no races, and `replay --verify` reproduces the same read models.
+- **Rules are the floor, not a fallback.** Every LLM task has a rule handler, so
+  the console demos with no model installed; the model may only *beat* the rule,
+  never be required for the app to start.
+- **Approval happens before the effect.** `act()` is unreachable without
+  `ActionApproved`; a rejection is recorded and executes nothing.
+- **Read models are folds.** Finance, tasks and the KPI rail are derived by
+  reducing events — mutating them in place would break replay.
+- **The theme is a skin.** `theme.py` swaps CSS variables only; poster and
+  document colours are brand constants, so a palette change can never alter a
+  printed price.
+- **The deploy agent commits, never pushes.** Its mutating tools need the exact
+  phrase `DEPLOY-MSM`, and no tool in `deploy_agent/` has a remote-push
+  implementation.
+
+### Full system diagram (draw.io)
 
 ![Complete architecture — editable draw.io source in docs/architecture](docs/architecture/msm-architecture.png)
 
-*Full system architecture — entry points, coordination core, domain agents, storage and
-the release pipeline to GitHub. The diagram above is exported from the editable
-draw.io file described in [Diagram sources](#diagram-sources) — **click the image for
-the full-resolution view**.*
-
-### Layered view
-
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│  ENTRY POINTS                                                          │
-│  Streamlit console (app.py) · CLI (cli.py) · FastAPI (api.py)          │
-│  Deploy Deep Agent (deploy_agent/, LangChain Deep Agents)               │
-└───────────────────────────────┬─────────────────────────────────────────┘
-                                ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  COMPOSITION ROOT — EcomopsSystem                                      │
-│  wires bus · approval gate · LLM/rules · embedder · inventory · agents │
-└───────────────────────────────┬─────────────────────────────────────────┘
-                                ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  COORDINATION CORE                                                     │
-│  EventBus (typed events, correlation/causation)                        │
-│  ApprovalGate (ActionProposed → Approved/Rejected)                     │
-│  EventJournal (JSONL audit) · Metrics (Prometheus text)                │
-└──────┬────────────────┬────────────────┬────────────────┬──────────────┘
-       ▼                ▼                ▼                ▼
-┌────────────┐  ┌────────────────┐  ┌───────────┐  ┌──────────────────┐
-│  AGENTS    │  │  INTELLIGENCE  │  │  STATE    │  │  OUTPUT          │
-│  customer  │  │  8 rules +     │  │  Inventory│  │  documents/      │
-│  clearance │  │  optional MLX  │  │  Finance  │  │  advert posters  │
-│  transit   │  │  chat model    │  │  tasks    │  │  promotion       │
-│  returns   │  │  connector     │  │  (folds)  │  │  channels        │
-│  tasks     │  │  embedder      │  │           │  │                  │
-└────────────┘  └────────────────┘  └───────────┘  └──────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  RELEASE PIPELINE                                                      │
-│  docs/ (PDFs, screenshots) + local git repo → git push → GitHub        │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-Four planes share one core:
-
-| Plane | Role |
-|---|---|
-| **Presentation** | Streamlit console, CLI, FastAPI — all call the same `EcomopsSystem` |
-| **Coordination** | Event bus, approval gate, journal, metrics — the single source of truth |
-| **Domain** | Agents, rules/LLM, inventory, finance, task folds — pure and testable |
-| **Output** | Documents, posters, notices, promotion channels, exported reports |
+*The same system as a drawn layout — entry points, coordination core, domain agents,
+storage and the release pipeline to GitHub. Exported from the editable draw.io file
+described in [Diagram sources](#diagram-sources) — **click the image for the
+full-resolution view**.*
 
 ### Event lifecycle
 
@@ -236,15 +317,6 @@ ActionProposed ──► ApprovalRequested ──► Approvals workspace
 Every event carries `correlation_id` and `causation_id`, so the Event trace workspace
 can reconstruct the full chain — request → proposal → approval → effect — without a
 relational database.
-
-### Design rules
-
-1. **Typed events only** — `Event` subclasses carry domain facts with shared envelope metadata.
-2. **Bus as store** — history is the source of truth; `bus.drain()` runs subscribers deterministically.
-3. **Approval gate** — every side effect starts as `ActionProposed` and waits for a human decision.
-4. **Deterministic fallback** — every LLM task has a rule handler; the app never depends on a model.
-5. **Theme skin only** — `theme.py` swaps CSS variables; domain logic and posters keep their own colours.
-6. **Pure read models** — metrics, finance and task state are folded from events, never mutated in place.
 
 ### Diagram sources
 
