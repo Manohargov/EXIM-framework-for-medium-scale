@@ -196,6 +196,7 @@ msm/
 ├── tests/                  293 offline, deterministic tests
 ├── Dockerfile / docker-compose.yml / .dockerignore
 ├── AGENTS.md               Agent operating rules for this repo
+├── PROJECT_WRITEUP.md      Executive project write-up
 └── README.md               This document
 ```
 
@@ -370,6 +371,7 @@ No tool pushes to a remote. See [`deploy_agent/README.md`](deploy_agent/README.m
 
 | Document | Contents |
 |---|---|
+| [Project write-up](PROJECT_WRITEUP.md) / [PDF](docs/writeup/MSM_Project_Writeup.pdf) | Executive summary, problem, solution, decisions, verification and future work |
 | [User guide](docs/user-guide/MSM_User_Guide.pdf) | 21 pages, all features, workflows and screenshots |
 | [Developer document](docs/developer-doc/MSM_Developer_Document.pdf) | 16 pages: architecture, schemas, storage, UI/UX, AI, flows, security |
 | [Architecture diagrams](docs/architecture/) | Editable `.drawio` sources and PNG exports |
