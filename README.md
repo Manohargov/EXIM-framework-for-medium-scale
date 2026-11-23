@@ -457,6 +457,14 @@ The repo was initialised locally with one commit (`git log --oneline`), and
 `Dockerfile`, `docker-compose.yml` and `.dockerignore` provide the local Docker
 deployment target. See `deploy_agent/README.md` for the full tool/safety table.
 
+## User guide
+
+A detailed 21-page PDF guide with screenshots of every workspace, workflow
+instructions, roles, themes, assistant/document intake, chat connector,
+deployment agent and architecture diagrams is at:
+
+`docs/user-guide/MSM_User_Guide.pdf` (rebuild with `docs/user-guide/build_guide.py`).
+
 ## Architecture diagrams
 
 Editable draw.io sources and rendered PNGs live in `docs/architecture/`:
