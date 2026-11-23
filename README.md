@@ -455,5 +455,4 @@ See [`AGENTS.md`](AGENTS.md) for the deployment agent operating rules.
 
 ## License
 
-MIT. See `LICENSE` if present; otherwise the project is provided as-is for demonstration
-and extension.
+MIT. See [LICENSE](LICENSE).
