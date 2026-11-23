@@ -162,7 +162,8 @@ A full walkthrough with screenshots is in [`docs/user-guide/MSM_User_Guide.pdf`]
 
 *Full system architecture — entry points, coordination core, domain agents, storage and
 the release pipeline to GitHub. The diagram above is exported from the editable
-draw.io file described in [Diagram sources](#diagram-sources).*
+draw.io file described in [Diagram sources](#diagram-sources) — **click the image for
+the full-resolution view**.*
 
 ### Layered view
 
